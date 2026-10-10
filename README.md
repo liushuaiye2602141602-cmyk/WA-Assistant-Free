@@ -1,3 +1,5 @@
+[中文](README.md) | [English](README.en.md)
+
 # WhatsApp 助手 · 免费本地版 2.3.8
 
 运行在 **WhatsApp Web** 上的 Chrome / Edge 浏览器扩展，提供聊天备份、语音导出、快捷回复、联系人整理、批量发送和屏幕隐私保护。它是独立第三方工具，并非 WhatsApp 或 Meta 官方产品。
@@ -45,7 +47,7 @@
 
 点击插件弹窗的“免责声明 / Disclaimer”，或解压后用浏览器打开 [disclaimer.html](disclaimer.html)，点击 **中文 / English** 切换并记住选择。
 
-**切换仅适用于免责声明；插件功能界面及使用说明主要为中文。** GitHub 文件预览不会运行切换脚本，请下载后打开页面。
+**免责声明页面的切换仅改变免责声明语言；插件功能界面及操作手册主要为中文。项目介绍可通过本页顶部的中文 / English 链接切换。** GitHub 文件预览不会运行切换脚本，请下载后打开页面。
 
 This is an independent WhatsApp Web extension. The disclaimer supports Chinese / English switching; the extension UI and user guide are primarily in Chinese. Download and extract the files, then open [disclaimer.html](disclaimer.html) in a browser.
 
