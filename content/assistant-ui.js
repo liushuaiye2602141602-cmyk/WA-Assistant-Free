@@ -68,6 +68,7 @@
     }finally{refreshBusy=false;}
   }
   function prepare() {
+    if (starting) throw new Error('正在保存发送任务，请稍候');
     if (importing || recordingPending || recorder?.state==='recording') throw new Error('请等待附件或录音完成');
     if (!recipients.length) throw new Error('请先添加收件人');
     if (numbersDirty) throw new Error('号码已修改，请先点击读取号码');
@@ -100,14 +101,25 @@
       message(scheduled?'定时任务已保存。浏览器运行时自动执行；关闭 WhatsApp 标签页会重新打开。':'任务已交给后台执行；关闭面板不影响任务。');
     }finally{starting=false;$('start').disabled=!preview;}
   }
+  let contactsLoading=false;
   async function loadContacts() {
-    await connected();
+    if(contactsLoading)return;
+    contactsLoading=true;
+    const controls=['contacts-load','source','group','admins','label'].map($);
+    const disabled=controls.map(node=>node.disabled);
+    controls.forEach(node=>node.disabled=true);
+    try { await readContacts(); }
+    finally { contactsLoading=false;controls.forEach((node,i)=>node.disabled=disabled[i]); }
+  }
+  async function readContacts() {
     const source = $('source').value;
+    await connected();
     if (source === 'chats') contacts = (await WABridge.getChatList()).filter(c => !c.id.endsWith('@g.us'));
     else if (source === 'group') {
       const ids=Array.from($('group').selectedOptions).map(o=>o.value).filter(Boolean);if(!ids.length)throw new Error('请选择一个或多个群组');
-      contacts=[];
-      for(let n=0;n<ids.length;n++){message(`读取群成员 ${n+1}/${ids.length}…`);contacts.push(...await WABridge.call('assistantGroup',{id:ids[n],excludeAdmins:$('admins').checked},120000));}
+      const loaded=[];
+      for(let n=0;n<ids.length;n++){message(`读取群成员 ${n+1}/${ids.length}…`);loaded.push(...await WABridge.call('assistantGroup',{id:ids[n],excludeAdmins:$('admins').checked},120000));}
+      contacts=loaded;
     }
     else contacts = await WABridge.call('assistantContacts', { filter: source, label: $('label').value.trim() }, 60000);
     const originalCount=contacts.length;
@@ -179,6 +191,7 @@
     panel.append(tools);
     action('add', () => { setRecipients(C.recipients($('numbers').value.split(/[,;\n]+/).filter(x => x.trim()).map(x => [x.trim()]))); message('号码已读取'); });
     $('import').onchange = async () => {
+      if(importing||recordingPending||starting){$('import').value='';message('请等待附件、录音或任务保存完成后再导入');return;}
       importing = true; invalidate();
       try { const f = $('import').files[0]; if (f) { const rows = /\.xlsx$/i.test(f.name) ? await WAReadXlsx(f) : C.parseCSV(await f.text()); setRecipients(C.recipients(rows)); $('numbers').value=''; message(`已导入 ${recipients.length} 位收件人`); } } catch (e) { fail(e); } finally { importing = false; $('import').value = ''; }
     };
@@ -203,12 +216,15 @@
       await refreshJobs();message(`回执已更新${unknown?'；'+unknown+' 条无法查询（已删除或接口不可见）':''}`);
     });
     $('files').onchange = async () => {
-      importing = true; invalidate(); files = [];
+      if(importing||recordingPending||starting){$('files').value='';message('请等待附件、录音或任务保存完成后再选择附件');return;}
+      importing = true; invalidate();
       try {
         const selected = Array.from($('files').files); if (selected.some(f => f.size > 16 * 1024 * 1024) || selected.reduce((s, f) => s + f.size, 0) > 32 * 1024 * 1024) throw new Error('附件超过大小限制');
-        files = await Promise.all(selected.map(f => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error('附件读取失败')); reader.onload = () => resolve({ name: f.name, mime: f.type || 'application/octet-stream', data: reader.result }); reader.readAsDataURL(f); })));
+        const loaded = await Promise.all(selected.map(f => new Promise((resolve, reject) => { const reader = new FileReader(); reader.onerror = reader.onabort = () => reject(new Error('附件读取失败或已取消')); reader.onload = () => resolve({ name: f.name, mime: f.type || 'application/octet-stream', data: reader.result }); reader.readAsDataURL(f); })));
+        files=loaded;
+        if(recordUrl)URL.revokeObjectURL(recordUrl);recordUrl=null;$('record-preview').removeAttribute('src');$('record-preview').hidden=true;
         $('files-list').textContent = selected.map(f => f.name).join('、');
-      } catch(e) { $('files').value = ''; $('files-list').textContent = ''; fail(e); } finally { importing = false; }
+      } catch(e) { $('files').value = ''; renderFiles(); fail(new Error((e.message||String(e))+'；原附件已保留')); } finally { importing = false; }
     };
     $('text').oninput = invalidate; $('optout').onchange = invalidate; $('numbers').oninput = () => { numbersDirty = true; invalidate(); message('号码已修改，请点击读取号码更新收件人'); };
     const timeLabel = document.createElement('label'); const timeInput = document.createElement('input');
@@ -216,8 +232,9 @@
     for(const id of ['buttons','schedule','delete-mode','delete-confirm','min','max']){$(id).addEventListener('input',invalidate);$(id).addEventListener('change',invalidate);}
     let recordTimer,recordUrl;
     const renderFiles=()=>{$('files-list').textContent=files.map(f=>f.name).join('、');};
-    action('files-clear',()=>{files=[];$('files').value='';if(recordUrl)URL.revokeObjectURL(recordUrl);recordUrl=null;$('record-preview').removeAttribute('src');$('record-preview').hidden=true;renderFiles();invalidate();});
+    action('files-clear',()=>{if(importing||recordingPending||starting)throw new Error('请等待附件、录音或任务保存完成后再清空');files=[];$('files').value='';if(recordUrl)URL.revokeObjectURL(recordUrl);recordUrl=null;$('record-preview').removeAttribute('src');$('record-preview').hidden=true;renderFiles();invalidate();});
     action('record',async()=>{
+      if(importing||starting)throw new Error('请等待附件或任务保存完成');
       if(recordingPending||recorder?.state==='recording')throw new Error('正在录音');
       if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw new Error('当前浏览器不支持录音');
       recordingPending=true;$('record').disabled=true;
@@ -230,6 +247,7 @@
           clearTimeout(recordTimer);recordingStream?.getTracks().forEach(t=>t.stop());$('record-stop').disabled=true;importing=true;
           try{
             const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});
+            if(!blob.size)throw new Error('录音没有有效音频，请检查麦克风后重试');
             const existingSize=files.reduce((s,f)=>s+Math.ceil((f.data.split(',')[1]?.length||0)*3/4),0);
             if(blob.size>16*1024*1024||existingSize+blob.size>32*1024*1024)throw new Error('录音超过附件大小限制');
             const data=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(new Error('录音读取失败'));r.readAsDataURL(blob);});
@@ -249,7 +267,7 @@
     action('contacts-load', loadContacts);
     action('select-all', () => $('contacts').querySelectorAll('input').forEach(x => x.checked = true));
     action('select-none', () => $('contacts').querySelectorAll('input').forEach(x => x.checked = false));
-    action('contacts-send', () => { const selected=chosenContacts(); if(!selected.length)throw new Error('请先选择联系人'); setRecipients(selected.map(c => ({ ...c, phone: c.phone || c.id.split('@')[0] }))); $('numbers').value=''; nav.querySelector('[data-tab="send"]').click(); message(`已添加 ${recipients.length} 位联系人，请在收件人列表中核对。`); });
+    action('contacts-send', () => { const selected=chosenContacts(); if(!selected.length)throw new Error('请先选择联系人'); setRecipients(selected); $('numbers').value=''; nav.querySelector('[data-tab="send"]').click(); message(`已添加 ${recipients.length} 位联系人，请在收件人列表中核对。`); });
     action('contacts-export', () => download('联系人.csv', [['id', 'phone', 'name', 'saved', 'admin'], ...chosenContacts().map(c => [c.id, c.phone, c.name, c.saved, c.admin])]));
     const excelButton = document.createElement('button'); excelButton.textContent = '导出选中 Excel';
     excelButton.onclick = () => WAWriteXlsx([['phone', 'name', 'id', 'saved', 'admin'], ...chosenContacts().map(c => [c.phone || c.id, c.name, c.id, c.saved, c.admin])]).then(blob => WAExporter.downloadBlob(blob, '联系人.xlsx')).catch(fail);

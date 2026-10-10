@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WhatsApp 助手 · 免费本地版",
-  "version": "2.3.2",
+  "version": "2.3.8",
   "description": "聊天备份、个性化批量发送、联系人导入导出、模板、发送报告与屏幕隐私保护。",
   "permissions": [
     "storage",

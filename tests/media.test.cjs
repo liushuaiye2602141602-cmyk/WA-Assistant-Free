@@ -4,6 +4,12 @@ for(const file of ['lib/zip.js','content/exporter.js'])vm.runInThisContext(fs.re
 function wave(){const samples=1600,b=Buffer.alloc(44+samples*2);b.write('RIFF');b.writeUInt32LE(b.length-8,4);b.write('WAVE',8);b.write('fmt ',12);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(8000,24);b.writeUInt32LE(16000,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(samples*2,40);for(let i=0;i<samples;i++)b.writeInt16LE(Math.round(3000*Math.sin(2*Math.PI*440*i/8000)),44+i*2);return b;}
 function entries(buffer){const bytes=new Uint8Array(buffer),view=new DataView(buffer),files=new Map();let pos=0;while(view.getUint32(pos,true)===0x04034b50){const size=view.getUint32(pos+18,true),nl=view.getUint16(pos+26,true),el=view.getUint16(pos+28,true),start=pos+30+nl+el;files.set(new TextDecoder().decode(bytes.slice(pos+30,pos+30+nl)),bytes.slice(start,start+size));pos=start+size;}return files;}
 (async()=>{
+ assert.equal(WAExporter.safeFilename('..'),'chat');
+ assert.equal(WAExporter.safeFilename('CON.txt'),'_CON.txt');
+ assert.equal(WAExporter.safeFilename('报告. '),'报告');
+ assert.equal(WAExporter.safeFilename('a\u0000b.txt'),'a_b.txt');
+ const safeZip=entries(await (await WAExporter.toZip({id:'123@lid',title:'..'},[],[])).arrayBuffer());
+ assert.ok(safeZip.has('chat/chat.html'));assert.equal([...safeZip.keys()].some(name=>name.split('/').includes('..')),false);
  const wav=wave(),chat={id:'8613800000000@c.us',title:'语音测试',phone:'8613800000000'};
  const messages=['one','two','mp3','missing','empty',''].map((id,i)=>({id,time:Date.now()+i,fromMe:false,type:i<2?'ptt':'audio',isVoice:i<2,isAudio:true,isMedia:true,filename:i<2?'voice.ogg':'',mimetype:i<2?'audio/wav':i===2?'audio/mpeg':'audio/ogg',duration:.2}));
  global.WABridge={downloadMedia:async id=>{if(id==='missing')throw new Error('media expired');if(id==='empty')return new Blob([],{type:'audio/ogg'});if(id==='mp3')return {data:Buffer.from('ID3fixture').toString('base64'),mimetype:'audio/mpeg'};return {data:Uint8Array.from(wav).buffer,mimetype:'audio/wav'};}};

@@ -13,6 +13,8 @@ const C = global.WAAssistantCore;
   assert.throws(() => C.target('not-a-number'));
   const rows = C.recipients([['phone','name','company'],['8613800000000','张先生','工厂'],['+8613800000000','重复','工厂']]);
   assert.equal(rows.length, 1);
+  assert.equal(C.recipients([['id','name'],['+86 (138) 0000-0000','A']])[0].id,'8613800000000@c.us');
+  assert.equal(C.recipients([['phone','id'],['8613800000000','wrong-id']])[0].id,'8613800000000@c.us');
   const unique=C.dedupeContacts([
     {id:'123456789@lid',phone:'+63 (916) 380-3240',name:'joel'},
     {id:'639163803240@c.us',phone:'639163803240',name:'Joel',saved:true},
@@ -26,6 +28,8 @@ const C = global.WAAssistantCore;
   assert.equal(unique[0].name,'Joel');
   assert.equal(unique[1].phone,'');
   assert.equal(C.dedupeContacts(unique).length,3);
+  assert.equal(C.dedupeContacts([{id:'1234567890123@g.us',phone:'1234567890123'},{id:'1234567890123@c.us',phone:'1234567890123'}]).length,2);
+  assert.equal(C.dedupeContacts([{name:'A'},{name:'B'}]).length,2);
   assert.equal(C.personalize('你好 {{name}}，{{company}}', rows[0]), '你好 张先生，工厂');
   assert.throws(() => C.personalize('{{unknown}}', rows[0]), /缺少/);
   assert.match(C.csv([['=HYPERLINK("evil")']]), /'=/);
@@ -34,6 +38,9 @@ const C = global.WAAssistantCore;
   assert.throws(()=>C.parseButtons('官网 | url | https://example.com\n回复 | reply | yes'),/混用/);
   assert.equal(C.delivery({messageIds:['a','b'],receipts:{a:3,b:2}}),'delivered');
   assert.equal(C.delivery({messageIds:['a','b'],receipts:{a:3,b:3}}),'read');
+  assert.equal(C.delivery({status:'uncertain',messageIds:['a'],receipts:{a:3}}),'unknown');
+  assert.equal(C.delivery({status:'sending',messageIds:['a'],receipts:{a:3}}),'unknown');
+  assert.equal(C.delivery({status:'submitted',messageIds:['a'],receipts:{a:99}}),'submitted');
   let sent = [];
   const q = new C.Queue(async x => { sent.push(x.id); if (x.id === 2) throw new Error('mock failure'); }, () => {}, async () => {});
   await q.run([{id:1},{id:2},{id:3}], 1000, 1000);
@@ -61,6 +68,9 @@ const C = global.WAAssistantCore;
   assert.equal((await call('assistantSend',{id:'123456789@c.us',text:'hello',files:[{name:'image.png',mime:'image/png',data:'data:image/png;base64,YQ=='}]})).ok,true);
   assert.deepEqual(calls.map(x=>x[0]),['text','file']);
   assert.equal((await call('assistantSend',{id:'invalid',text:'no'})).ok,false);
+  const priorInvalidFile=calls.length;
+  const invalidFile=await call('assistantSend',{id:'123456789@c.us',text:'must not send',files:[{name:'bad',data:'data:audio/ogg;base64,YQ=='}]});
+  assert.equal(invalidFile.data.ok,false);assert.equal(calls.length,priorInvalidFile);
   assert.equal((await call('constructor')).ok,false);
   const hook={};WPP.on=(name,fn)=>hook[name]=fn;
   WPP.chat.getMessages=async()=>[];WPP.chat.getLastSeen=async()=>Date.now()/1000;

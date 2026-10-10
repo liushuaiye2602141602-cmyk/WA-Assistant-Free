@@ -44,21 +44,22 @@
       const fields = Object.create(null);
       r.forEach((v, i) => { fields[keys[i] || 'field' + (i + 1)] = String(v); });
       fields.phone = id.split('@')[0]; fields.name = fields.name || fields['姓名'] || r[1] || fields.phone;
-      result.push({ id, ...fields });
+      result.push({ ...fields, id });
     }
     return result;
   }
   function dedupeContacts(rows) {
     const parent=rows.map((_,i)=>i), seen=new Map();
-    const find=i=>parent[i]===i?i:(parent[i]=find(parent[i]));
+    const find=i=>{let root=i;while(parent[root]!==root)root=parent[root];while(parent[i]!==i){const next=parent[i];parent[i]=root;i=next;}return root;};
     const phoneOf=row=>{
+      if(/@g\.us$/.test(String(row.id||'')))return '';
       const phone=String(row.phone||'').replace(/\D/g,'');
       if(phone.length>=7&&phone.length<=15)return phone;
       const match=String(row.id||'').match(/^(\d{7,15})@c\.us$/);
       return match?match[1]:''; // A LID is an internal identifier, never a phone number.
     };
     rows.forEach((row,i)=>{
-      const keys=['id:'+row.id]; const phone=phoneOf(row);
+      const keys=row.id?['id:'+row.id]:[]; const phone=phoneOf(row);
       if(phone)keys.push('phone:'+phone);
       keys.forEach(key=>{if(seen.has(key))parent[find(i)]=find(seen.get(key));else seen.set(key,i);});
     });
@@ -128,8 +129,9 @@
     return buttons;
   }
   function delivery(item) {
+    if(item.status&&item.status!=='submitted')return 'unknown';
     if(!item.messageIds?.length)return 'unknown';
-    const acks=item.messageIds.map(id=>item.receipts?.[id]??0);
+    const acks=item.messageIds.map(id=>{const ack=item.receipts?.[id];return Number.isInteger(ack)&&ack>=0&&ack<=4?ack:0;});
     if(acks.every(a=>a>=3))return 'read';
     if(acks.every(a=>a>=2))return 'delivered';
     return 'submitted';

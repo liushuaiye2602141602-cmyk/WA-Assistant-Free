@@ -5,13 +5,14 @@
   "use strict";
 
   function safeFilename(name) {
-    return (
+    const safe = (
       String(name || "chat")
-        .replace(/[\\/:*?"<>|]+/g, "_")
+        .replace(/[\\/:*?"<>|\u0000-\u001f\u007f]+/g, "_")
         .replace(/\s+/g, " ")
         .trim()
-        .slice(0, 80) || "chat"
+        .slice(0, 80).replace(/[ .]+$/, '') || "chat"
     );
+    return /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(safe)?'_'+safe:safe;
   }
 
   /**

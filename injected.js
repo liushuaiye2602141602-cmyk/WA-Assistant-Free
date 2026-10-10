@@ -424,7 +424,8 @@
       if(settings.buttons?.length && !params.text)throw new Error('按钮消息需要文本内容');
       if(settings.buttons?.length>3)throw new Error('最多三个按钮');
       // Validate every attachment before sending any part of this recipient's payload.
-      for(const f of params.files||[])if(!/^data:[^,]*;base64,/.test(f.data||''))throw new Error('附件数据无效');
+      if(params.files!=null&&!Array.isArray(params.files))throw new Error('附件列表无效');
+      for(const f of params.files||[])if(!f||typeof f.mime!=='string'||!f.mime||typeof f.name!=='string'||!/^data:[^,]*;base64,/.test(f.data||''))throw new Error('附件数据无效');
       async function remember(result){
         const msgId=messageId(result);if(!msgId)throw new Error('接口未返回消息 ID，结果需要核对');
         ids.push(msgId);trackedMessages.add(msgId);receipts[msgId]=Number(result?.ack)||0;await checkpoint(params,msgId,receipts[msgId]);

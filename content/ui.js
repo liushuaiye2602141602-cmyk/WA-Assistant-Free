@@ -239,6 +239,7 @@
     renderChatList() {
       const list = document.getElementById("wabk-chat-list");
       if (!list) return;
+      const focusedId=list.contains(document.activeElement)?document.activeElement.dataset.chatId:null;
       list.innerHTML = "";
       if (!STATE.chats.length) {
         list.appendChild(el("div", { class: "wabk-empty", text: "未找到聊天。点刷新或刷新 WhatsApp 页面。" }));
@@ -248,6 +249,8 @@
         const selected = STATE.selected.has(chat.id);
         const row = el("div", {
           class: `wabk-chat-row${selected ? " selected" : ""}`,
+          role: 'checkbox', tabindex: '0', 'aria-checked': String(selected), 'aria-label': chat.name || chat.id, 'data-chat-id': chat.id,
+          onkeydown: event=>{if(event.key===' '||event.key==='Enter'){event.preventDefault();event.currentTarget.click();}},
           onclick: () => {
             if (STATE.selected.has(chat.id)) STATE.selected.delete(chat.id);
             else STATE.selected.add(chat.id);
@@ -257,6 +260,7 @@
         row.innerHTML = `<span class="wabk-radio"></span><span class="wabk-chat-title" title="${String(chat.name || "").replace(/"/g, "&quot;")}">${escapeHtml(chat.name || chat.id)}</span>`;
         list.appendChild(row);
       }
+      if(focusedId)[...list.children].find(row=>row.dataset.chatId===focusedId)?.focus({preventScroll:true});
     },
 
     log(msg) {
@@ -310,6 +314,15 @@
 
     async startExport(onlyActive) {
       if (STATE.busy) return;
+      STATE.busy = true;
+      const buttons=[...this.buildPanel().querySelectorAll('#wabk-export,#wabk-export-active')];
+      const disabled=buttons.map(button=>button.disabled);
+      buttons.forEach(button=>button.disabled=true);
+      try { return await this.performExport(onlyActive); }
+      finally { STATE.busy=false;buttons.forEach((button,i)=>button.disabled=disabled[i]); }
+    },
+
+    async performExport(onlyActive) {
       let targets = [];
       if (onlyActive) {
         const c = await WABridge.getActiveChat().catch(() => null);
@@ -333,7 +346,6 @@
         return;
       }
 
-      STATE.busy = true;
       const exportBtn = this.panel.querySelector("#wabk-export");
       exportBtn.disabled = true;
       exportBtn.textContent = "导出中…";
@@ -361,7 +373,6 @@
         this.setProgress("错误: " + err);
         this.log(String(err));
       } finally {
-        STATE.busy = false;
         exportBtn.disabled = false;
         exportBtn.textContent = "导出所选";
         setTimeout(() => this.setProgress(""), 5000);

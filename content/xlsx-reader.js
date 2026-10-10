@@ -4,24 +4,40 @@
   async function readXlsx(file) {
     if (file.size > 20 * 1024 * 1024) throw new Error('Excel 文件不能超过 20 MB');
     const bytes = new Uint8Array(await file.arrayBuffer()); const view = new DataView(bytes.buffer);
+    const limit=32*1024*1024;
+    const bounds=(start,size)=>{if(!Number.isSafeInteger(start)||!Number.isSafeInteger(size)||start<0||size<0||start+size>bytes.length)throw new Error('Excel ZIP 数据截断或偏移无效');};
+    if(bytes.length<22)throw new Error('不是有效的 XLSX 文件');
     let end = bytes.length - 22;
     while (end >= Math.max(0, bytes.length - 65557) && view.getUint32(end, true) !== 0x06054b50) end--;
     if (end < 0 || view.getUint32(end, true) !== 0x06054b50) throw new Error('不是有效的 XLSX 文件');
     let offset = view.getUint32(end + 16, true); const count = view.getUint16(end + 10, true);
     const entries = new Map(); const decode = b => new TextDecoder().decode(b);
     for (let i = 0; i < count; i++) {
+      bounds(offset,46);
       if (view.getUint32(offset, true) !== 0x02014b50) throw new Error('Excel ZIP 目录损坏');
       const nameLen = view.getUint16(offset + 28, true), extra = view.getUint16(offset + 30, true), comment = view.getUint16(offset + 32, true);
+      bounds(offset,46+nameLen+extra+comment);
       entries.set(decode(bytes.slice(offset + 46, offset + 46 + nameLen)), { method: view.getUint16(offset + 10, true), size: view.getUint32(offset + 20, true), expanded: view.getUint32(offset + 24, true), pos: view.getUint32(offset + 42, true) });
       offset += 46 + nameLen + extra + comment;
     }
     async function xml(name) {
       const e = entries.get(name); if (!e) throw new Error('Excel 缺少：' + name);
-      if (e.expanded > 32 * 1024 * 1024) throw new Error('Excel 工作表过大');
+      if (e.expanded > limit) throw new Error('Excel 工作表过大');
+      bounds(e.pos,30);
+      if(view.getUint32(e.pos,true)!==0x04034b50)throw new Error('Excel ZIP 文件头损坏');
       const start = e.pos + 30 + view.getUint16(e.pos + 26, true) + view.getUint16(e.pos + 28, true);
+      bounds(start,e.size);
       let data = bytes.slice(start, start + e.size);
-      if (e.method === 8) data = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+      if (e.method === 8) {
+        const reader=new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+        const chunks=[];let total=0;
+        try{while(true){const {value,done}=await reader.read();if(done)break;total+=value.length;if(total>limit)throw new Error('Excel 解压后过大');chunks.push(value);}}
+        catch(error){await reader.cancel().catch(()=>{});throw error;}
+        finally{reader.releaseLock();}
+        data=new Uint8Array(total);let cursor=0;for(const chunk of chunks){data.set(chunk,cursor);cursor+=chunk.length;}
+      }
       else if (e.method !== 0) throw new Error('不支持此 Excel 压缩方式');
+      if(data.length>limit||data.length!==e.expanded)throw new Error('Excel 解压大小与目录不符');
       const doc = new DOMParser().parseFromString(decode(data), 'application/xml');
       if (doc.querySelector('parsererror')) throw new Error('Excel XML 损坏');
       return doc;
@@ -36,7 +52,10 @@
     return Array.from((await xml(sheetPath)).getElementsByTagName('row')).map(row => {
       const values = [];
       for (const c of row.getElementsByTagName('c')) {
-        let index = 0; for (const char of (c.getAttribute('r') || 'A').replace(/\d/g, '')) index = index * 26 + char.charCodeAt(0) - 64;
+        const ref=c.getAttribute('r');
+        if(ref&&!/^[A-Z]{1,3}[1-9]\d{0,6}$/.test(ref))throw new Error('Excel 单元格坐标无效');
+        let index = ref?0:values.length+1; if(ref)for (const char of ref.replace(/\d/g, '')) index = index * 26 + char.charCodeAt(0) - 64;
+        if(index>16384||(ref&&Number(ref.replace(/[A-Z]/g,''))>1048576))throw new Error('Excel 单元格坐标超出范围');
         const v = c.getElementsByTagName('v')[0]?.textContent || '';
         values[index - 1] = c.getAttribute('t') === 's' ? shared[Number(v)] || '' : c.getAttribute('t') === 'inlineStr' ? Array.from(c.getElementsByTagName('t')).map(t => t.textContent).join('') : v;
       }

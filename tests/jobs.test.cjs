@@ -15,7 +15,24 @@ function harness(){let state,now=100000,id=0;const sent=[],wakes=[];
  h=harness();await h.engine.create(h.payload());h.engine.io.execute=async()=>{throw new Error('transport timeout');};await h.engine.tick();assert.equal(h.state.jobs[0].status,'attention');assert.equal(h.state.jobs[0].items[0].status,'uncertain');await h.engine.command('1','retry');assert.equal(h.state.jobs[0].items[0].status,'uncertain');
  h=harness();const partial=await h.engine.create(h.payload());h.engine.io.execute=async(job,item)=>{await h.engine.receipt(job.account,'early-id',3);await h.engine.checkpoint(job.id,item.key,'early-id',1);return {ok:false,error:'attachment failed',messageIds:['early-id'],receipts:{'early-id':1}};};await h.engine.tick();assert.equal(h.state.jobs[0].items[0].receipts['early-id'],3);assert.equal(h.state.jobs[0].items[0].status,'uncertain');
  h=harness();await h.engine.create(h.payload());h.engine.io.execute=async()=>({waiting:true,error:'not logged in'});await h.engine.tick();assert.equal(h.state.jobs[0].items[0].status,'pending');assert.equal(h.state.jobs[0].status,'waiting');
+ for(const response of [null,undefined,{ok:true}]) {
+   h=harness();await h.engine.create(h.payload());h.engine.io.execute=async()=>response;
+   await h.engine.tick();assert.equal(h.state.jobs[0].status,'attention');assert.equal(h.state.jobs[0].items[0].status,'uncertain');
+   await h.engine.tick();assert.equal(h.state.jobs[0].items[1].status,'pending');
+ }
+ for(const status of ['stopped','paused']) {
+   h=harness();await h.engine.create(h.payload());const interrupted=h.state;
+   interrupted.jobs[0].status=status;interrupted.jobs[0].items[0].status='sending';h.state=interrupted;
+   await h.engine.recover();assert.equal(h.state.jobs[0].status,status);assert.equal(h.state.jobs[0].items[0].status,'uncertain');
+   await h.engine.tick();assert.equal(h.sent.length,0);
+ }
  h=harness();await assert.rejects(h.engine.create(h.payload({deleteMode:'chat',deleteConfirmed:false})),/确认/);await assert.rejects(h.engine.create(h.payload({consent:false})),/确认/);
  const durable=await h.engine.create(h.payload({deleteMode:'messages',deleteConfirmed:true}));h.engine.io.execute=async(job,item)=>{assert.equal(await h.engine.canSend(job.id,item.key,job.account),true);await h.engine.command(job.id,'stop');assert.equal(await h.engine.canSend(job.id,item.key,job.account),false);return {ok:false,waiting:true};};await h.engine.tick();assert.equal(h.state.jobs[0].status,'stopped');
- console.log('PASS: scheduled dispatch, delay, persistence, pause/resume/stop, optout isolation, restart and timeout duplicate prevention, partial sends, monotonic receipts, deletion confirmation. No real sends.');
+ for(const sequence of [[[3,true],[4,false]],[[4,false],[2,true]],[[3,true],[1,false]]]){
+   h=harness();const job=await h.engine.create(h.payload({items:[{recipient:{id:'123456-789@g.us'},text:'group'}]}));
+   for(const [ack,verified]of sequence)await h.engine.receipt(job.account,'cached-group',ack,verified);
+   await h.engine.checkpoint(job.id,'0','cached-group',1);
+   const expected=Math.max(...sequence.filter(x=>x[1]).map(x=>x[0]));
+   assert.equal(h.state.jobs[0].items[0].receipts['cached-group'],expected);
+ } console.log('PASS: scheduled dispatch, delay, persistence, pause/resume/stop, optout isolation, restart and timeout duplicate prevention, partial sends, monotonic receipts, deletion confirmation. No real sends.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -16,6 +16,10 @@ function host(){
 }
 async function until(fn){for(let i=0;i<100;i++){if(fn())return;await new Promise(setImmediate);}throw new Error('mock background timeout');}
 (async()=>{
+ const popup=host();assert.equal((await popup.request({action:'open'})).ok,true);assert.equal(popup.tabs.length,1);
+ assert.equal((await popup.request({action:'WABK_OPEN'})).ok,true);
+ assert.equal((await popup.request({action:'WABK_EXPORT_ACTIVE'})).ok,true);
+ await assert.rejects(popup.request({action:'UNKNOWN_ACTION'}),/unhandled/);
  const h=host();const created=await h.request({type:'WAA_CREATE',payload:{account:'8613800000000@c.us',consent:true,items:[{recipient:{id:'84900000000@c.us'},text:'test'}],files:[],minMs:1000,maxMs:1000,scheduledAt:110000,deleteMode:'none'}});assert.equal(created.ok,true);assert.equal(h.sent.length,0);
  h.advance(10000);h.alarm();await until(()=>h.state.waaState?.jobs[0].status==='waiting');assert.equal(h.tabs.length,1);assert.equal(h.tabs[0].active,false);assert.equal(h.sent.length,0);
  h.advance(30000);h.alarm();await until(()=>h.state.waaState?.jobs[0].status==='completed');assert.equal(h.sent.length,1);

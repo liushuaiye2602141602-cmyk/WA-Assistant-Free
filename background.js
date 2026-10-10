@@ -28,7 +28,7 @@ async function sendToWA(message) {
   }
   try {
     const res = await chrome.tabs.sendMessage(tab.id, message);
-    return res || { ok: true };
+    return res || { ok: false, error: '页面未返回结果，请刷新 WhatsApp Web 后重试。' };
   } catch (e) {
     return {
       ok: false,
@@ -39,7 +39,7 @@ async function sendToWA(message) {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (!msg || !msg.type) return;
+  if (!msg || (!msg.type && !msg.action)) return;
 
   if (msg.type === "WABK_PING_BG") {
     sendResponse({ ok: true });
@@ -47,12 +47,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === "WABK_OPEN_WA" || msg.action === "open") {
-    openWhatsApp().then(() => sendResponse({ ok: true }));
+    openWhatsApp().then(() => sendResponse({ ok: true }), error=>sendResponse({ok:false,error:String(error.message||error)}));
     return true;
   }
 
-  if (msg.action) {
-    sendToWA({ type: msg.action }).then(sendResponse);
+  if (['WABK_OPEN','WABK_EXPORT_ACTIVE'].includes(msg.action)) {
+    sendToWA({ type: msg.action }).then(sendResponse, error=>sendResponse({ok:false,error:String(error.message||error)}));
     return true;
   }
 });

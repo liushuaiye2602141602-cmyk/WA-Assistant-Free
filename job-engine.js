@@ -13,7 +13,7 @@
     async recover() {
       await this.transaction(state=>{
         for(const job of state.jobs) for(const item of job.items) if(item.status==='sending') {
-          item.status='uncertain'; item.error='执行环境中断，结果不确定。请核对聊天后人工处理'; job.status='attention';
+          item.status='uncertain'; item.error='执行环境中断，结果不确定。请核对聊天后人工处理'; if(!['stopped','paused'].includes(job.status))job.status='attention';
         }
       });
     }
@@ -25,7 +25,8 @@
       if(!Number.isFinite(p.scheduledAt)||p.scheduledAt<0) throw new Error('定时时间无效');
       if(!['none','messages','chat'].includes(p.deleteMode||'none')) throw new Error('删除选项无效');
       if(p.deleteMode!=='none' && !p.deleteConfirmed) throw new Error('请明确确认自动删除范围');
-      if((p.files||[]).some(f=>!/^data:[^,]*;base64,/.test(f.data||''))) throw new Error('附件无效');
+      if(p.files!=null&&!Array.isArray(p.files))throw new Error('附件列表无效');
+      if((p.files||[]).some(f=>!f||typeof f.mime!=='string'||!f.mime||typeof f.name!=='string'||!/^data:[^,]*;base64,/.test(f.data||''))) throw new Error('附件无效');
       if(p.items.some(i=>!String(i.text||'').trim())&&!(p.files||[]).length)throw new Error('消息内容不能为空');
       if(p.buttons?.length&&p.items.some(i=>!String(i.text||'').trim()))throw new Error('按钮消息需要文本');
       if((p.buttons||[]).length>3)throw new Error('最多三个按钮');
@@ -63,12 +64,13 @@
       await this.transaction(s=>{
         let matched=false;
         for(const job of s.jobs.filter(j=>j.account===account)) for(const item of job.items) if(item.messageIds.includes(id)){const value=item.recipient.id.endsWith('@g.us')&&!groupVerified?Math.min(1,ack):ack;item.receipts[id]=Math.max(item.receipts[id]??0,value);matched=true;}
-        if(!matched){const cache=(s.earlyReceipts||={})[account]||={};cache[id]={ack:Math.max(cache[id]?.ack||0,ack),groupVerified,at:this.io.now()};const keys=Object.keys(cache);if(keys.length>1000)delete cache[keys.sort((a,b)=>cache[a].at-cache[b].at)[0]];}
+        if(!matched){const cache=(s.earlyReceipts||={})[account]||={};const previous=cache[id];const verifiedAck=previous?.verifiedAck??(previous?.groupVerified?previous.ack:0);cache[id]={ack:Math.max(previous?.ack||0,ack),verifiedAck:Math.max(verifiedAck,groupVerified?ack:0),at:this.io.now()};const keys=Object.keys(cache);if(keys.length>1000)delete cache[keys.sort((a,b)=>cache[a].at-cache[b].at)[0]];}
       });
     }
     async checkpoint(jobId,key,id,ack=0) {
       if(!id) return;
-      await this.transaction(s=>{const job=s.jobs.find(j=>j.id===jobId),item=job?.items.find(i=>i.key===key); if(!item) return; if(!item.messageIds.includes(id)) item.messageIds.push(id); const early=s.earlyReceipts?.[job.account]?.[id];const group=item.recipient.id.endsWith('@g.us');item.receipts[id]=Math.max(item.receipts[id]??0,group?Math.min(1,Number(ack)||0):Number(ack)||0,group&&!early?.groupVerified?Math.min(1,early?.ack||0):early?.ack||0);if(s.earlyReceipts?.[job.account])delete s.earlyReceipts[job.account][id];});
+      ack=Number.isInteger(ack)&&ack>=0&&ack<=4?ack:0;
+      await this.transaction(s=>{const job=s.jobs.find(j=>j.id===jobId),item=job?.items.find(i=>i.key===key); if(!item) return; if(!item.messageIds.includes(id)) item.messageIds.push(id); const early=s.earlyReceipts?.[job.account]?.[id];const group=item.recipient.id.endsWith('@g.us');const cachedAck=group?Math.max(Math.min(1,early?.ack||0),early?.verifiedAck??(early?.groupVerified?early.ack:0)):early?.ack||0;item.receipts[id]=Math.max(item.receipts[id]??0,group?Math.min(1,ack):ack,cachedAck);if(s.earlyReceipts?.[job.account])delete s.earlyReceipts[job.account][id];});
     }
     async tick() {
       if(this.busy) return; this.busy=true;
@@ -89,6 +91,8 @@
         if(!dispatch) return;
         const {job,item}=dispatch;
         let result; try {result=await this.io.execute(job,item);} catch(e) {result={ok:false,uncertain:true,error:String(e.message||e)};}
+        if(!result||typeof result!=='object'||Array.isArray(result))result={ok:false,uncertain:true,error:'执行接口未返回有效结果，请核对聊天'};
+        if(result.ok&&!(Array.isArray(result.messageIds)&&result.messageIds.length))result={...result,ok:false,uncertain:true,error:'未返回消息 ID，发送结果无法确认，请核对聊天'};
         await this.transaction(s=>{
           const current=s.jobs.find(j=>j.id===job.id), row=current?.items.find(i=>i.key===item.key); if(!row) return;
           row.time=new Date(this.io.now()).toISOString();
