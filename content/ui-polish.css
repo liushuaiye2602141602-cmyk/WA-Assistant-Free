@@ -1,0 +1,53 @@
+/* All panel rules are scoped to keep WhatsApp's own interface unchanged. */
+#wabk-panel { --waa-green:#087f68; --waa-ink:#183b35; --waa-line:#dce8e3; top:12px; right:12px; height:calc(100dvh - 24px); width:min(820px,calc(100vw - 24px)); border:1px solid var(--waa-line); border-radius:20px; background:#f5f8f7; color:var(--waa-ink); font:14px/1.55 "Segoe UI","Microsoft YaHei",sans-serif; box-shadow:0 20px 70px #12392d33; overflow:hidden; }
+#wabk-panel [hidden] { display:none!important; }
+#wabk-panel .wabk-header { background:#fff; padding:20px 24px; border-bottom:1px solid var(--waa-line); }
+#wabk-panel .wabk-brand { font-size:21px; font-weight:700; letter-spacing:-.5px; }
+#wabk-panel .wabk-badge { background:#e6f5ed; color:var(--waa-green); font-size:11px; padding:4px 9px; }
+#wabk-panel .waa-nav { background:#fff; gap:8px; padding:12px 24px; flex-wrap:wrap; }
+#wabk-panel .waa-nav button { border:0; background:transparent; color:#536e66; padding:10px 15px; font-weight:600; border-radius:10px; }
+#wabk-panel .waa-nav button.active { background:var(--waa-green); color:#fff; box-shadow:0 4px 10px #087f6820; }
+#wabk-panel .waa-nav .waqr-settings-entry { margin-left:auto; background:#edf5f1; color:var(--waa-green); }
+#wabk-panel button { font:inherit; cursor:pointer; border:1px solid var(--waa-line); border-radius:9px; padding:8px 12px; color:var(--waa-ink); background:#fff; transition:background .15s,box-shadow .15s; }
+#wabk-panel button:hover:not(:disabled) { background:#eaf5ef; border-color:#8cbcaf; }
+#wabk-panel button:disabled { opacity:.48; cursor:not-allowed; }
+#wabk-panel :is(button,input,select,textarea):focus-visible { outline:3px solid #55bfa4; outline-offset:2px; }
+#wabk-panel :is(.waa-primary,.wabk-btn:not(.wabk-btn-ghost)) { background:var(--waa-green); border-color:var(--waa-green); color:#fff; font-weight:600; }
+#wabk-panel :is(.waa-primary,.wabk-btn:not(.wabk-btn-ghost)):hover:not(:disabled) { background:#066452; }
+#wabk-panel .waa-danger { color:#ad4141; }
+#wabk-panel .wabk-banner { background:#e8f5ef; border:1px solid #d4ebdf; padding:12px 16px; border-radius:12px; margin:16px 20px 0; color:#326457; font-size:13px; }
+#wabk-panel .wabk-body { gap:16px; padding:16px 20px 20px; }
+#wabk-panel .wabk-col { background:#fff; border:1px solid var(--waa-line); border-radius:14px; padding:16px; }
+#wabk-panel .wabk-chat-list { border-color:var(--waa-line); border-radius:10px; }
+#wabk-panel .wabk-chat-row { padding:13px 10px; }
+#wabk-panel .wabk-chat-row.selected { background:#e8f5ef; }
+#wabk-panel .waa-tools { min-height:0; }
+#wabk-panel .waa-tools section { padding:20px 24px; }
+#wabk-panel .waa-tools h3 { font-size:20px; margin:0 0 6px; }
+#wabk-panel .waa-tools p { color:#627970; font-size:12px; line-height:1.7; }
+#wabk-panel .waa-card { background:#fff; border:1px solid var(--waa-line); border-radius:14px; padding:18px; margin:16px 0; box-shadow:0 2px 6px #183b3503; }
+#wabk-panel .waa-card h4 { display:flex; align-items:center; gap:10px; font-size:15px; margin:0 0 14px; }
+#wabk-panel .waa-card h4 span { background:#e6f4ee; color:var(--waa-green); border-radius:8px; padding:3px 7px; font-size:12px; }
+#wabk-panel .waa-row { gap:9px; margin:12px 0; }
+#wabk-panel :is(textarea,input:not([type=checkbox]):not([type=file]),select) { background:#fbfdfc; border:1px solid #cfdfd7; border-radius:9px; padding:10px 12px; color:var(--waa-ink); font:inherit; min-width:0; }
+#wabk-panel textarea { resize:vertical; }
+#wabk-panel input[type=checkbox] { accent-color:var(--waa-green); width:16px; height:16px; vertical-align:middle; }
+#wabk-panel input[type=file] { max-width:100%; font-size:12px; margin-top:6px; }
+#wabk-panel input[type=file]::file-selector-button { background:#edf5f1; border:1px solid var(--waa-line); padding:7px 10px; border-radius:7px; color:var(--waa-green); cursor:pointer; }
+#wabk-panel #waa-count { border-radius:20px; background:#e8f5ef; padding:4px 9px; color:var(--waa-green); font-size:12px; }
+#wabk-panel pre { border:1px solid var(--waa-line); border-radius:10px; background:#f4f8f6; overflow-wrap:anywhere; font:12px/1.7 "Segoe UI",sans-serif; }
+#wabk-panel pre[data-empty-label]:empty::before { content:attr(data-empty-label); color:#70847c; }
+#wabk-panel #waa-stats { background:#e8f5ef; padding:12px; border-radius:9px; font-size:12px; }
+#wabk-panel #waa-status { border-top:1px solid var(--waa-line); background:#fff; padding:13px 24px; font-size:12px; color:var(--waa-green); }
+#wabk-panel .waa-contact-list { background:#fff; border-color:var(--waa-line); border-radius:12px; }
+#wabk-panel .waa-contact-list label { padding:9px; margin:0; border-bottom:1px solid #edf3ef; }
+#wabk-panel [data-pane=privacy] > label { background:#fff; padding:14px 16px; border:1px solid var(--waa-line); border-radius:10px; margin:10px 0; }
+.waqr-manager-card { border-radius:18px; box-shadow:0 24px 80px #12392d33; font-family:"Segoe UI","Microsoft YaHei",sans-serif; }
+.waqr-fixed-entry { background:#087f68; border:1px solid #ffffff80; font-family:"Segoe UI","Microsoft YaHei",sans-serif; }
+@media(max-width:700px) { #wabk-panel { top:0;right:0;width:100vw;height:100dvh;border-radius:0; } #wabk-panel .wabk-header { padding:14px 16px; } #wabk-panel .waa-nav { padding:10px 12px;gap:4px; } #wabk-panel .waa-nav button { padding:8px 10px;font-size:12px; } #wabk-panel .waa-nav .waqr-settings-entry { margin-left:0; } #wabk-panel .waa-tools section { padding:16px 12px; } #wabk-panel .waa-card { padding:14px; } #wabk-panel .wabk-body { padding:12px; } #wabk-panel .wabk-banner { margin:12px 12px 0; } #wabk-panel .waa-row > select { width:100%; } }
+@media(prefers-reduced-motion:reduce) { #wabk-panel, #wabk-panel button { transition:none; } }
+#wabk-panel .waa-nav button.active:hover { background:#066452; color:#fff; }
+#wabk-panel .wabk-export-btn { width:100%; margin-top:10px; padding:11px 14px; }
+#wabk-panel #waa-recipient-summary { max-height:150px; }
+.waqr-manager :is(button,input,textarea):focus-visible { outline:3px solid #55bfa4; outline-offset:2px; }
+#wabk-panel .waa-nav button { transition:none; }

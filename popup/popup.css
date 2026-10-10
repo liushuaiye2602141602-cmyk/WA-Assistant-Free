@@ -1,0 +1,123 @@
+:root {
+  --bg: #f0f2f5;
+  --card: #fff;
+  --ink: #111b21;
+  --muted: #667781;
+  --accent: #00a884;
+  --accent-2: #25d366;
+}
+
+* { box-sizing: border-box; }
+body {
+  width: 340px;
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+header {
+  background: linear-gradient(135deg, #00a884, #008069);
+  color: #fff;
+  padding: 14px 16px;
+}
+
+.brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(255,255,255,.25);
+  position: relative;
+}
+.logo::after {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+  transform: rotate(-30deg);
+}
+
+h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+.sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  opacity: .9;
+}
+
+main { padding: 12px; }
+
+.card {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid #e9edef;
+}
+
+.hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #e9edef;
+  color: var(--ink);
+}
+.btn:hover { filter: brightness(0.97); }
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn.ghost {
+  background: #fff;
+  border: 1px solid #d1d7db;
+}
+
+.tips h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.tips ol {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.tips b { color: var(--ink); }
+/* UI 2.3: compact launch card, clearer actions and keyboard focus. */
+body { width:360px; background:#f5f8f7; color:#183b35; }
+header { padding:22px 20px; background:linear-gradient(135deg,#087f68,#126e5e); }
+.brand h1 { font-size:20px; }
+.sub { opacity:.85; margin-top:5px; }
+main { padding:16px; }
+.card { border-color:#dce8e3; border-radius:14px; padding:16px; box-shadow:0 3px 12px #183b3505; }
+.btn { border-radius:9px; padding:11px 14px; font-weight:600; }
+.btn.primary { background:#087f68; border-color:#087f68; }
+.btn:focus-visible { outline:3px solid #55bfa4; outline-offset:2px; }
+.tips ol { padding-left:20px; line-height:1.9; }

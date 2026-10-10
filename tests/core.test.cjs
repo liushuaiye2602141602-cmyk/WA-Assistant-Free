@@ -1,0 +1,88 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const base = path.resolve(__dirname, '..');
+vm.runInThisContext(fs.readFileSync(path.join(base, 'content/assistant-core.js'), 'utf8'));
+vm.runInThisContext(fs.readFileSync(path.join(base, 'lib/zip.js'), 'utf8'));
+const C = global.WAAssistantCore;
+(async () => {
+  assert.deepEqual(C.parseCSV('\uFEFFphone,name\r\n8613800000000,"A,B"\r\n84900000000,"Line\nTwo"'), [['phone','name'],['8613800000000','A,B'],['84900000000','Line\nTwo']]);
+  assert.throws(() => C.parseCSV('"broken'), /引号/);
+  assert.equal(C.target('+86 (138) 0000-0000'), '8613800000000@c.us');
+  assert.throws(() => C.target('not-a-number'));
+  const rows = C.recipients([['phone','name','company'],['8613800000000','张先生','工厂'],['+8613800000000','重复','工厂']]);
+  assert.equal(rows.length, 1);
+  const unique=C.dedupeContacts([
+    {id:'123456789@lid',phone:'+63 (916) 380-3240',name:'joel'},
+    {id:'639163803240@c.us',phone:'639163803240',name:'Joel',saved:true},
+    {id:'998877665@lid',phone:'',name:'Same name'},
+    {id:'887766554@lid',phone:'',name:'Same name'},
+    {id:'123456789@lid',phone:'',name:''}
+  ]);
+  assert.equal(unique.length,3);
+  assert.equal(unique[0].id,'639163803240@c.us');
+  assert.equal(unique[0].phone,'639163803240');
+  assert.equal(unique[0].name,'Joel');
+  assert.equal(unique[1].phone,'');
+  assert.equal(C.dedupeContacts(unique).length,3);
+  assert.equal(C.personalize('你好 {{name}}，{{company}}', rows[0]), '你好 张先生，工厂');
+  assert.throws(() => C.personalize('{{unknown}}', rows[0]), /缺少/);
+  assert.match(C.csv([['=HYPERLINK("evil")']]), /'=/);
+  assert.deepEqual(C.parseButtons('官网 | url | https://example.com'),[{text:'官网',url:'https://example.com/'}]);
+  assert.throws(()=>C.parseButtons('官网 | url | javascript:alert(1)'),/http/);
+  assert.throws(()=>C.parseButtons('官网 | url | https://example.com\n回复 | reply | yes'),/混用/);
+  assert.equal(C.delivery({messageIds:['a','b'],receipts:{a:3,b:2}}),'delivered');
+  assert.equal(C.delivery({messageIds:['a','b'],receipts:{a:3,b:3}}),'read');
+  let sent = [];
+  const q = new C.Queue(async x => { sent.push(x.id); if (x.id === 2) throw new Error('mock failure'); }, () => {}, async () => {});
+  await q.run([{id:1},{id:2},{id:3}], 1000, 1000);
+  assert.deepEqual(sent, [1,2,3]); assert.deepEqual(q.items.map(x=>x.status), ['submitted','failed','submitted']);
+  assert.equal(q.running, false);
+  await assert.rejects(q.run([], 0, 0), /间隔/);
+  const stop = new C.Queue(async () => stop.stop(), () => {}, async () => {});
+  await stop.run([{id:1},{id:2}],1000,1000); assert.equal(stop.items[1].status,'pending');
+  let resumed = false;
+  const pause = new C.Queue(async () => {}, () => {}, async () => { resumed = true; pause.paused = false; });
+  pause.onChange = state => { if (state.items[0]?.status === 'submitted' && !resumed) state.paused = true; };
+  await pause.run([{id:1},{id:2}],1000,1000); assert.equal(resumed,true);
+  const zip = new WAZip.ZipWriter(); await zip.add('中文/chat.md','你好');
+  const buf = await zip.build().arrayBuffer(); const dv = new DataView(buf); assert.equal(dv.getUint16(6,true),0x800);
+  const manifest = JSON.parse(fs.readFileSync(path.join(base,'manifest.json')));
+  for (const name of [manifest.background.service_worker, manifest.action.default_popup, ...manifest.content_scripts.flatMap(s=>[...s.js,...s.css]), ...manifest.web_accessible_resources.flatMap(r=>r.resources), ...Object.values(manifest.icons)]) assert.ok(fs.existsSync(path.join(base,name)),name);
+  const listeners = new Map(); let output, calls = [];
+  const WPP = { conn: { isMainReady:()=>true, getMyUserId:()=> 'account@c.us' }, chat: { sendTextMessage: async (...args)=>{calls.push(['text',...args]);return {id:'text-id',ack:1};}, sendFileMessage: async (...args)=>{calls.push(['file',...args]);return {id:'file-id',ack:1};} }, contact: { list:async()=>[{id:'123456789@c.us', name:'Alice',isMyContact:true}], queryExists:async()=>({wid:'123456789@c.us'}) } };
+  const context = {window:{WPP,addEventListener:(name,fn)=>listeners.set(name,fn),dispatchEvent:event=>output=event.detail},CustomEvent:class{constructor(name,o){this.type=name;this.detail=o.detail;}},console};
+  vm.runInNewContext(fs.readFileSync(path.join(base,'injected.js'),'utf8'),context);
+  const call = async (eventName,params={}) => { await listeners.get('WABK_wpp')({detail:{eventName,params,requestId:'test'}}); return output; };
+  assert.equal((await call('assistantAccount')).data,'account@c.us');
+  assert.equal((await call('assistantContacts',{filter:'saved'})).data.length,1);
+  assert.equal((await call('assistantCheck',{id:'123456789@c.us'})).data.exists,true);
+  assert.equal((await call('assistantSend',{id:'123456789@c.us',text:'hello',files:[{name:'image.png',mime:'image/png',data:'data:image/png;base64,YQ=='}]})).ok,true);
+  assert.deepEqual(calls.map(x=>x[0]),['text','file']);
+  assert.equal((await call('assistantSend',{id:'invalid',text:'no'})).ok,false);
+  assert.equal((await call('constructor')).ok,false);
+  const hook={};WPP.on=(name,fn)=>hook[name]=fn;
+  WPP.chat.getMessages=async()=>[];WPP.chat.getLastSeen=async()=>Date.now()/1000;
+  WPP.chat.getMessageACK=async()=>({ack:3,participants:[{deliveredAt:100,readAt:101}],deliveryRemaining:0,readRemaining:0});
+  WPP.chat.deleteMessage=async(...args)=>calls.push(['deleteMessage',...args]);
+  WPP.chat.delete=async(...args)=>calls.push(['deleteChat',...args]);
+  assert.equal((await call('assistantWatch',{autoOptout:true,keywords:['stop'],suppression:[]})).data.listening,true);
+  let sendResult=await call('assistantSend',{id:'123456789@c.us',account:'account@c.us',text:'with timestamp',settings:{timestamp:true,buttons:[{text:'官网',url:'https://example.com'}],deleteMode:'messages',deleteConfirmed:true}});
+  assert.equal(sendResult.data.ok,true);assert.match(calls.findLast(x=>x[0]==='text')[2],/发送时间/);assert.equal(calls.findLast(x=>x[0]==='text')[3].buttons.length,1);assert.deepEqual(calls.findLast(x=>x[0]==='deleteMessage').slice(-2),[false,false]);
+  sendResult=await call('assistantSend',{id:'123456789@c.us',text:'delete chat',settings:{deleteMode:'chat',deleteConfirmed:true}});assert.equal(sendResult.data.ok,true);assert.equal(calls.at(-1)[0],'deleteChat');
+  const before=calls.length;sendResult=await call('assistantSend',{id:'123456789@c.us',text:'not authorized',settings:{deleteMode:'chat'}});assert.equal(sendResult.data.ok,false);assert.equal(calls.length,before);
+  sendResult=await call('assistantSend',{id:'123456789@c.us',text:'wrong account',account:'different@c.us'});assert.equal(sendResult.data.ok,false);assert.equal(calls.length,before);
+  assert.equal((await call('assistantReceipts',{ids:['text-id']})).data[0].ack,3);
+  assert.equal((await call('assistantActivity',{id:'123456789@c.us',days:30})).data.activity,'recent');
+  WPP.chat.getLastSeen=async()=>false;assert.equal((await call('assistantActivity',{id:'123456789@c.us'})).data.activity,'unknown');
+  WPP.chat.getMessages=async()=>[{id:{fromMe:false},body:'STOP!'}];
+  sendResult=await call('assistantSend',{id:'123456789@c.us',text:'do not send'});assert.equal(sendResult.data.optedout,true);assert.equal(calls.length,before);
+  await call('assistantWatch',{autoOptout:true,keywords:['stop'],suppression:[]});await call('assistantCancel',{jobId:'cancelled'});
+  sendResult=await call('assistantSend',{id:'123456789@c.us',text:'do not send',jobId:'cancelled'});assert.equal(sendResult.data.ok,false);assert.equal(calls.length,before);
+  WPP.chat.getMessages=async()=>[{id:{_serialized:'voice-id',fromMe:false},type:'ptt',mimetype:'audio/ogg;codecs=opus',duration:7,t:1700000000,author:'123456789@c.us'}];
+  const voice=(await call('getMessages',{chats:[{id:'123456789@c.us',name:'Alice',phone:'123456789'}],count:-1})).data[0].items[0];
+  assert.equal(voice.isAudio,true);assert.equal(voice.isVoice,true);assert.equal(voice.duration,7);assert.equal(voice.mimetype,'audio/ogg;codecs=opus');
+  WPP.chat.downloadMedia=async()=>new Blob(['voice'],{type:'audio/ogg'});const downloaded=(await call('downloadMedia',{id:'voice-id'})).data;assert.equal(downloaded.data.byteLength,5);assert.equal(downloaded.mimetype,'audio/ogg');
+  console.log('PASS: CSV, number validation, templates, queue failure/pause/stop, ZIP UTF-8, assets, mocked bridge. No real messages sent.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

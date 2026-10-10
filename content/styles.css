@@ -1,0 +1,368 @@
+/* WA Chats Backup Pro — injected styles */
+
+.wabk-green {
+  color: #fff !important;
+}
+
+/* Header button — absolute inside #main header, never touches left nav */
+.wabk-header-btn {
+  position: absolute !important;
+  top: 50% !important;
+  right: 12px !important;
+  transform: translateY(-50%) !important;
+  z-index: 40 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 34px !important;
+  height: 34px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #25d366 !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18) !important;
+  flex: 0 0 auto;
+}
+
+.wabk-header-btn:hover {
+  background: #1ebe5b !important;
+}
+
+/* Floating entry — always on screen, right edge (does not affect left nav) */
+.wabk-float-btn {
+  position: fixed !important;
+  top: 88px !important;
+  right: 14px !important;
+  z-index: 99998 !important;
+  width: 44px !important;
+  height: 44px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: #25d366 !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28) !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.wabk-float-btn:hover {
+  background: #1ebe5b !important;
+  transform: scale(1.08);
+}
+
+.wabk-float-btn:active {
+  transform: scale(0.96);
+}
+
+
+.wabk-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(720px, 92vw);
+  height: 100vh;
+  z-index: 99999;
+  background: #fff;
+  color: #111b21;
+  box-shadow: -8px 0 32px rgba(11, 20, 26, 0.18);
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  transform: translateX(105%);
+  transition: transform 0.22s ease;
+  border-left: 1px solid #e9edef;
+}
+
+.wabk-panel[data-open="true"] {
+  transform: translateX(0);
+}
+
+.wabk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e9edef;
+  background: #f0f2f5;
+}
+
+.wabk-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wabk-brand {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.wabk-badge {
+  background: #00a884;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+.wabk-close {
+  border: 0;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #54656f;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.wabk-close:hover {
+  background: #e9edef;
+}
+
+.wabk-banner {
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  background: #d9fdd3;
+  border-radius: 8px;
+  color: #111b21;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.wabk-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wabk-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 16px;
+  overflow: auto;
+}
+
+.wabk-chats {
+  border-right: 1px solid #e9edef;
+  background: #fff;
+}
+
+.wabk-options {
+  background: #f7f8fa;
+}
+
+.wabk-section-title {
+  font-weight: 700;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.wabk-section-title small {
+  font-weight: 400;
+  color: #667781;
+  font-size: 12px;
+}
+
+.wabk-chat-list {
+  flex: 1;
+  min-height: 200px;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  border: 1px solid #e9edef;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.wabk-chat-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 12px;
+  border-bottom: 1px solid #f0f2f5;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wabk-chat-row:hover {
+  background: #f5f6f6;
+}
+
+.wabk-chat-row.selected {
+  background: #e7ffdb;
+}
+
+.wabk-chat-row.active .wabk-chat-title {
+  font-weight: 700;
+}
+
+.wabk-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid #667781;
+  display: inline-block;
+  position: relative;
+}
+
+.wabk-chat-row.selected .wabk-radio {
+  border-color: #00a884;
+  background: #00a884;
+  box-shadow: inset 0 0 0 3px #fff;
+}
+
+.wabk-chat-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wabk-chat-meta {
+  font-size: 11px;
+  color: #667781;
+}
+
+.wabk-empty {
+  padding: 24px;
+  text-align: center;
+  color: #667781;
+}
+
+.wabk-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.wabk-list-actions button {
+  border: 1px solid #d1d7db;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #111b21;
+}
+
+.wabk-list-actions button:hover {
+  background: #f0f2f5;
+}
+
+.wabk-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #667781;
+}
+
+.wabk-formats,
+.wabk-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.wabk-formats label,
+.wabk-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.wabk-scroll-row input {
+  width: 64px;
+  margin-left: auto;
+  border: 1px solid #d1d7db;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.wabk-export-btn {
+  border: 0;
+  background: #00a884;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.wabk-export-btn:hover:not(:disabled) {
+  background: #008f72;
+}
+
+.wabk-export-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wabk-export-btn.ghost {
+  background: #fff;
+  color: #00a884;
+  border: 1px solid #00a884;
+}
+
+.wabk-export-btn.ghost:hover:not(:disabled) {
+  background: #e7ffdb;
+}
+
+.wabk-progress {
+  margin-top: 8px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e9edef;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #111b21;
+  word-break: break-word;
+}
+
+.wabk-log {
+  margin-top: 12px;
+  max-height: 180px;
+  overflow: auto;
+  font-size: 11px;
+  color: #54656f;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wabk-log-line {
+  padding: 4px 6px;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #f0f2f5;
+}
+
+@media (max-width: 820px) {
+  .wabk-body {
+    grid-template-columns: 1fr;
+  }
+  .wabk-chats {
+    border-right: 0;
+    border-bottom: 1px solid #e9edef;
+    max-height: 45vh;
+  }
+  .wabk-panel {
+    width: 100vw;
+  }
+}

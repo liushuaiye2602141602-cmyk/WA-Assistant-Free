@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "WhatsApp 助手 · 免费本地版",
+  "version": "2.3.2",
+  "description": "聊天备份、个性化批量发送、联系人导入导出、模板、发送报告与屏幕隐私保护。",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "https://*.whatsapp.com/*",
+    "https://*.whatsapp.net/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*", "https://*.whatsapp.com/*"],
+      "js": [
+        "lib/zip.js",
+        "content/wpp.js",
+        "content/exporter.js",
+        "content/ui.js",
+        "content/assistant-core.js",
+        "content/xlsx-reader.js",
+        "content/assistant-agent.js",
+        "content/assistant-ui.js",
+        "content/quick-replies.js",
+        "content/ui-polish.js",
+        "content/main.js"
+      ],
+      "css": ["content/styles.css", "content/assistant.css", "content/quick-replies.css", "content/ui-polish.css"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "libs/wppconnect-wa.js",
+        "injected.js"
+      ],
+      "matches": ["https://web.whatsapp.com/*", "https://*.whatsapp.com/*"]
+    }
+  ],
+  "action": {
+    "default_title": "WhatsApp 助手 · 免费本地版",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
